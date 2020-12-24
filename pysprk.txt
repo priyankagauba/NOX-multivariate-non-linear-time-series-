@@ -1,0 +1,33 @@
+from pathlib import Path
+import os
+import pandas as pd
+
+# Initiate findspark instance to run pyspark 
+import findspark
+findspark.init()
+
+# Importing PySpark
+import pyspark 
+
+# Create a spark session 
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.getOrCreate()
+
+
+parquetFile_489 = spark.read.parquet("E:/ADAD/unzipped/Python489_5/dataForDeviceAnomaly/serviceName=SERVICE_DEVICE_ERROR_DATA/masterAccount=AVL/siteAccount=AVL List HQ (Graz)/systemCode=489/")
+display(parquetFile_489)
+
+from pyspark.sql.functions import explode
+df=parquetFile_489.withColumn("sdrsValues", explode(parquetFile_489.sdrsValues))
+df.show(10)
+
+from pyspark.sql.functions import struct,col
+df1 = df.select("currentTime","lastCalibrationDate","materialNumberDescription","salesforceAccount","systemTypeName","serviceVersion","serialNumber","materialNumber","equipmentNumber","softwareVersion","measuredAt","sdrsValues.*","_id")
+df1.printSchema()
+
+from pyspark.sql.functions import expr
+df2=df1.groupBy('measuredAt','lastCalibrationDate','equipmentNumber').pivot("channelName").agg(expr("coalesce(first(value))"))
+
+df3=df2.filter(df2.Z_y_Status =="2.0")
+df3.show(3,truncate=False)
+
